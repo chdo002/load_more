@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:load_more/load_more.dart';
+import 'package:load_more/cupertino_load_more.dart';
 
 class AutoLoad extends StatefulWidget {
   const AutoLoad({super.key});
