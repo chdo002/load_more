@@ -1,6 +1,6 @@
-name: load_more
+name: cupertino_load_more
 description: "a `CupertinoSliverRefreshControl` like load more sliver "
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/chdo002/load_more
 repository: https://github.com/chdo002/load_more.git
 
