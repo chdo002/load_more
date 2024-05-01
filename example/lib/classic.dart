@@ -2,14 +2,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:load_more/load_more.dart';
 
-class ClassicPage extends StatefulWidget {
-  const ClassicPage({super.key});
+class Classic extends StatefulWidget {
+  const Classic({super.key});
 
   @override
-  State<ClassicPage> createState() => _ClassicPageState();
+  State<Classic> createState() => _ClassicState();
 }
 
-class _ClassicPageState extends State<ClassicPage> {
+class _ClassicState extends State<Classic> {
   late ValueNotifier<int> _count;
   static const int initialCount = 4;
 
@@ -22,45 +22,36 @@ class _ClassicPageState extends State<ClassicPage> {
   Future<void> refresh() async {
     await Future.delayed(const Duration(seconds: 1));
     _count.value = initialCount;
+    var loadMores = loadMore();
   }
 
   Future<void> loadMore() async {
     await Future.delayed(const Duration(seconds: 1));
-    _count.value = _count.value + 3;
+    _count.value = _count.value + 8;
   }
 
   @override
   Widget build(BuildContext context) {
+    var customScrollView = CustomScrollView(slivers: [
+      CupertinoSliverRefreshControl(onRefresh: refresh),
+      ValueListenableBuilder(
+          valueListenable: _count,
+          builder: (c, value, _) {
+            return SliverList(
+                delegate: SliverChildListDelegate([
+              ...List.generate(value, (index) => '$index').map((e) => Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(e),
+                    ),
+                  ))
+            ]));
+          }),
+      LoadMoreController(onLoad: loadMore),
+    ]);
     return Scaffold(
-        appBar: const CupertinoNavigationBar(middle: Text('classic')),
-        body: CustomScrollView(slivers: [
-          CupertinoSliverRefreshControl(onRefresh: refresh),
-          ValueListenableBuilder(
-              valueListenable: _count,
-              builder: (c, value, _) {
-                return SliverList(
-                    delegate: SliverChildListDelegate([
-                  ...List.generate(value, (index) => '$index')
-                      .map((e) => Container(
-                            height: 40,
-                            color: Colors.blue,
-                            child: Text(e),
-                          ))
-                ]));
-              }),
-          MyLoadMoreController(
-              onRefresh: loadMore,
-              autoRefresh: false,
-              builder: (context, refreshState, pulledExtent,
-                  refreshTriggerPullDistance, refreshIndicatorExtent) {
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: Container(
-                      height: 40,
-                      color: Colors.deepPurpleAccent,
-                      child: const CupertinoActivityIndicator(radius: 20)),
-                );
-              })
-        ]));
+      appBar: const CupertinoNavigationBar(middle: Text('classic')),
+      body: customScrollView,
+    );
   }
 }

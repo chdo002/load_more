@@ -3,16 +3,16 @@ library load_more;
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
-class _LoadMoreWidget extends SingleChildRenderObjectWidget {
-  const _LoadMoreWidget({
+class _LoadMoreSliverWidget extends SingleChildRenderObjectWidget {
+  const _LoadMoreSliverWidget({
     this.refreshIndicatorLayoutExtent = 0.0,
     this.hasLayoutExtent = false,
     this.autoRefresh = false,
+    required this.onPreloadZone,
     super.child,
   }) : assert(refreshIndicatorLayoutExtent >= 0.0);
 
@@ -22,22 +22,25 @@ class _LoadMoreWidget extends SingleChildRenderObjectWidget {
 
   final bool autoRefresh;
 
+  final VoidCallback onPreloadZone;
+
   @override
   RenderObject createRenderObject(BuildContext context) {
     return _LoadMoreSliver(
-      refreshIndicatorExtent: refreshIndicatorLayoutExtent,
-      hasLayoutExtent: hasLayoutExtent,
-      autoRefresh: autoRefresh,
-    );
+        refreshIndicatorExtent: refreshIndicatorLayoutExtent,
+        hasLayoutExtent: hasLayoutExtent,
+        autoRefresh: autoRefresh,
+        onPreloadZone: onPreloadZone);
   }
 
   @override
-  void updateRenderObject(BuildContext context,
-      covariant _LoadMoreSliver renderObject) {
+  void updateRenderObject(
+      BuildContext context, covariant _LoadMoreSliver renderObject) {
     renderObject
       ..refreshIndicatorLayoutExtent = refreshIndicatorLayoutExtent
       ..hasLayoutExtent = hasLayoutExtent
-      ..autoRefresh = autoRefresh;
+      ..autoRefresh = autoRefresh
+      ..onPreloadZone = onPreloadZone;
   }
 }
 
@@ -47,15 +50,16 @@ class _LoadMoreSliver extends RenderSliver
     required double refreshIndicatorExtent,
     required bool hasLayoutExtent,
     required bool autoRefresh,
+    required this.onPreloadZone,
     RenderBox? child,
-  })
-      : assert(refreshIndicatorExtent >= 0.0),
+  })  : assert(refreshIndicatorExtent >= 0.0),
         _refreshIndicatorExtent = refreshIndicatorExtent,
         _hasLayoutExtent = hasLayoutExtent,
         _autoRefresh = autoRefresh {
     this.child = child;
   }
 
+  VoidCallback onPreloadZone;
   double _refreshIndicatorExtent;
 
   set refreshIndicatorLayoutExtent(double value) {
@@ -89,34 +93,57 @@ class _LoadMoreSliver extends RenderSliver
 
   @override
   void performLayout() {
-    // empty viewport or this sliver not visible
-    if (constraints.remainingPaintExtent <=
-        0.000000001 // sometimes remainingPaintExtent can be this small, but sliver actually not visiable, maybe viewport`s bug
-        ||
-        constraints.precedingScrollExtent <= 0) {
+    // empty viewport will not show sliver, you should load data from refresher or a initializer
+    bool invisible = constraints.precedingScrollExtent <= 0;
+    //when user pull down, remainingPaintExtent can be this small, but sliver actually not visiable, maybe viewport`s bug
+    invisible |= (constraints.remainingPaintExtent < 0.000000001);
+    // this sliver not visible
+    if (invisible && !_autoRefresh) {
+      // not paint indicator
       geometry = SliverGeometry.zero;
       child!.layout(
         constraints.asBoxConstraints(maxExtent: 0),
         parentUsesSize: true,
       );
       return;
+    } else if (invisible && _autoRefresh) {
+      // not paint indicator
+      geometry = SliverGeometry.zero;
+      child!.layout(
+        constraints.asBoxConstraints(maxExtent: 0),
+        parentUsesSize: true,
+      );
+
+      // trigger preload
+      if (parent is RenderViewport) {
+        RenderViewport port = parent as RenderViewport;
+        // slivers extent not scroll in viewport
+        final remainScrollExtent = constraints.precedingScrollExtent -
+            port.offset.pixels -
+            constraints.viewportMainAxisExtent;
+
+        if (remainScrollExtent <
+                (port.cacheExtent ??
+                    RenderAbstractViewport.defaultCacheExtent) &&
+            remainScrollExtent > 0) {
+          onPreloadZone();
+        }
+      }
+      return;
     }
 
-    double scrolledExtent = constraints.precedingScrollExtent +
-        constraints.remainingPaintExtent -
-        constraints.viewportMainAxisExtent;
+    double scrollOffsetOfAllSlivers = (parent as RenderViewport).offset.pixels;
 
     // precede slivers not fill viewport
     if (constraints.precedingScrollExtent <
         constraints.viewportMainAxisExtent) {
-      if (_autoRefresh && scrolledExtent >= 0) {
+      if (_autoRefresh && scrollOffsetOfAllSlivers >= 0) {
         final scrollExtent = (constraints.viewportMainAxisExtent -
             constraints.precedingScrollExtent);
         geometry = SliverGeometry(
           scrollExtent: scrollExtent,
-          // paintOrigin: 0, //max(0, scrollExtent - _refreshIndicatorExtent),
-          paintExtent: scrollExtent, //_refreshIndicatorExtent,
-          maxPaintExtent: scrollExtent, //_refreshIndicatorExtent,
+          paintExtent: scrollExtent,
+          maxPaintExtent: scrollExtent,
         );
         child!.layout(
           constraints.asBoxConstraints(
@@ -127,13 +154,10 @@ class _LoadMoreSliver extends RenderSliver
               )),
           parentUsesSize: true,
         );
-
         return;
       }
-      // offset of first sliver
-
       // user pulling down
-      if (scrolledExtent < 0) {
+      if (scrollOffsetOfAllSlivers < 0) {
         geometry = SliverGeometry.zero;
         child!.layout(
           constraints.asBoxConstraints(maxExtent: 0),
@@ -141,37 +165,39 @@ class _LoadMoreSliver extends RenderSliver
         );
         return;
       }
-      final remainViewPortExtent = constraints.viewportMainAxisExtent -
-          constraints.precedingScrollExtent;
+
       if (_hasLayoutExtent) {
-        var paintOrigin = constraints.remainingPaintExtent - scrolledExtent;
-        var fix = paintOrigin + _refreshIndicatorExtent -
+        var paintOrigin =
+            constraints.remainingPaintExtent - scrollOffsetOfAllSlivers;
+        var fix = paintOrigin +
+            _refreshIndicatorExtent -
             constraints.remainingPaintExtent;
         if (fix > 0) {
           paintOrigin -= fix;
         }
 
+        final painExtent = constraints.remainingPaintExtent - paintOrigin;
         geometry = SliverGeometry(
           scrollExtent: 0,
           paintOrigin: paintOrigin,
-          paintExtent: _refreshIndicatorExtent,
-          maxPaintExtent: _refreshIndicatorExtent,
+          paintExtent: painExtent,
+          maxPaintExtent: painExtent,
         );
       } else {
         geometry = SliverGeometry(
           scrollExtent: 0,
-          paintOrigin: constraints.remainingPaintExtent -
-              scrolledExtent,
-          paintExtent: scrolledExtent,
-          maxPaintExtent: scrolledExtent,
+          paintOrigin:
+              constraints.remainingPaintExtent - scrollOffsetOfAllSlivers,
+          paintExtent: scrollOffsetOfAllSlivers,
+          maxPaintExtent: scrollOffsetOfAllSlivers,
         );
       }
       child!.layout(
         constraints.asBoxConstraints(
             maxExtent: min(
-              constraints.remainingPaintExtent,
-              geometry!.maxPaintExtent,
-            )),
+          constraints.remainingPaintExtent,
+          geometry!.maxPaintExtent,
+        )),
         parentUsesSize: true,
       );
       return;
@@ -188,7 +214,7 @@ class _LoadMoreSliver extends RenderSliver
     geometry = SliverGeometry(
       scrollExtent: layoutExtent,
       paintExtent:
-      min(_refreshIndicatorExtent, constraints.remainingPaintExtent),
+          min(_refreshIndicatorExtent, constraints.remainingPaintExtent),
       maxPaintExtent: _refreshIndicatorExtent,
     );
   }
@@ -204,27 +230,39 @@ class _LoadMoreSliver extends RenderSliver
   void applyPaintTransform(RenderObject child, Matrix4 transform) {}
 }
 
-class MyLoadMoreController extends StatefulWidget {
-  const MyLoadMoreController({
+/// A sliver widget implementing the iOS-style load more content control.
+/// work like [CupertinoSliverRefreshControl] and support autoLoad & preload
+class LoadMoreController extends StatefulWidget {
+  ///  if the [autoLoad] argument be true:
+  ///   * [onLoad] will be called when viewport not filled
+  ///   * [onLoad] will be called when the sliver reach the cacheExtent of the viewport
+  /// other arguments work like those of [CupertinoSliverRefreshControl]
+  const LoadMoreController({
     super.key,
-    this.refreshTriggerPullDistance = 60,
-    this.refreshIndicatorExtent = 40,
-    this.builder,
-    this.onRefresh,
-    this.autoRefresh = false,
-  });
+    required this.onLoad,
+    this.refreshTriggerPullDistance = 76,
+    this.refreshIndicatorExtent = 56,
+    this.builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
+    this.autoLoad = false,
+  })  : assert(refreshTriggerPullDistance > 0.0),
+        assert(refreshIndicatorExtent >= 0.0),
+        assert(
+          refreshTriggerPullDistance >= refreshIndicatorExtent,
+          'The refresh indicator cannot take more space in its final state '
+          'than the amount initially created by overscrolling.',
+        );
 
   final double refreshTriggerPullDistance;
   final double refreshIndicatorExtent;
   final RefreshControlIndicatorBuilder? builder;
-  final RefreshCallback? onRefresh;
-  final bool autoRefresh;
+  final Future<void> Function()? onLoad;
+  final bool autoLoad;
 
   @override
-  State<MyLoadMoreController> createState() => _MyLoadMoreControllerState();
+  State<LoadMoreController> createState() => _LoadMoreControllerState();
 }
 
-class _MyLoadMoreControllerState extends State<MyLoadMoreController> {
+class _LoadMoreControllerState extends State<LoadMoreController> {
   static const double _inactiveResetOverscrollFraction = 0.1;
   late RefreshIndicatorMode refreshState;
   Future<void>? refreshTask;
@@ -235,6 +273,13 @@ class _MyLoadMoreControllerState extends State<MyLoadMoreController> {
   void initState() {
     super.initState();
     refreshState = RefreshIndicatorMode.inactive;
+  }
+
+  double get triggerDistance {
+    if (widget.autoLoad) {
+      return widget.refreshIndicatorExtent - 1;
+    }
+    return widget.refreshTriggerPullDistance;
   }
 
   RefreshIndicatorMode transitionNextState() {
@@ -251,10 +296,6 @@ class _MyLoadMoreControllerState extends State<MyLoadMoreController> {
       }
     }
 
-    double triggerDistance = widget.refreshTriggerPullDistance;
-    if (widget.autoRefresh) {
-      triggerDistance = widget.refreshIndicatorExtent - 1;
-    }
     switch (refreshState) {
       case RefreshIndicatorMode.inactive:
         if (latestIndicatorBoxExtent <= 0) {
@@ -270,19 +311,19 @@ class _MyLoadMoreControllerState extends State<MyLoadMoreController> {
         } else if (latestIndicatorBoxExtent < triggerDistance) {
           return RefreshIndicatorMode.drag;
         } else {
-          if (widget.onRefresh != null) {
+          if (widget.onLoad != null) {
             HapticFeedback.mediumImpact();
             SchedulerBinding.instance.addPostFrameCallback(
-                    (Duration timestamp) {
-                  refreshTask = widget.onRefresh!()
-                    ..whenComplete(() {
-                      if (mounted) {
-                        setState(() => refreshTask = null);
-                        refreshState = transitionNextState();
-                      }
-                    });
-                  setState(() => hasSliverLayoutExtent = true);
-                }, debugLabel: 'Refresh.transition');
+                (Duration timestamp) {
+              refreshTask = widget.onLoad!()
+                ..whenComplete(() {
+                  if (mounted) {
+                    setState(() => refreshTask = null);
+                    refreshState = transitionNextState();
+                  }
+                });
+              setState(() => hasSliverLayoutExtent = true);
+            }, debugLabel: 'Refresh.transition');
           }
           return RefreshIndicatorMode.armed;
         }
@@ -321,16 +362,21 @@ class _MyLoadMoreControllerState extends State<MyLoadMoreController> {
 
   @override
   Widget build(BuildContext context) {
-    return _LoadMoreWidget(
+    return _LoadMoreSliverWidget(
         refreshIndicatorLayoutExtent: widget.refreshIndicatorExtent,
         hasLayoutExtent: hasSliverLayoutExtent,
-        autoRefresh: widget.autoRefresh,
+        autoRefresh: widget.autoLoad,
+        onPreloadZone: () {
+          latestIndicatorBoxExtent = triggerDistance;
+          refreshState = transitionNextState();
+        },
         child: LayoutBuilder(builder: (c, constraints) {
           latestIndicatorBoxExtent = constraints.maxHeight;
           refreshState = transitionNextState();
-          if (widget.builder != null && latestIndicatorBoxExtent > 0) {
-            if (refreshState == RefreshIndicatorMode.done &&
-                widget.autoRefresh) {
+
+          if (widget.builder != null && latestIndicatorBoxExtent > 0.0000001) {
+            // if refreshState is RefreshIndicatorMode.done and still need build indicator, means viewport not filled
+            if (refreshState == RefreshIndicatorMode.done && widget.autoLoad) {
               refreshState = RefreshIndicatorMode.drag;
               refreshState = transitionNextState();
             }
@@ -344,48 +390,5 @@ class _MyLoadMoreControllerState extends State<MyLoadMoreController> {
           }
           return Container();
         }));
-  }
-}
-
-void pp(Object? a, [
-  Object? b,
-  Object? c,
-  Object? d,
-  Object? e,
-  Object? f,
-  Object? g,
-  Object? h,
-  Object? i,
-  Object? j,
-  Object? k,
-  Object? l,
-  Object? m,
-  Object? n,
-  Object? o,
-  Object? p,
-]) {
-  final time = DateTime.now();
-  String str = '$time-pp:  $a';
-  add(Object? p) {
-    if (p != null) str += ',  $p';
-  }
-
-  add(b);
-  add(c);
-  add(d);
-  add(e);
-  add(f);
-  add(g);
-  add(h);
-  add(i);
-  add(j);
-  add(k);
-  add(l);
-  add(m);
-  add(n);
-  add(o);
-
-  if (kDebugMode) {
-    print(str);
   }
 }

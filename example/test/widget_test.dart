@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:example/main.dart';
+import 'dart:math';
+import 'package:flutter/cupertino.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
@@ -26,5 +28,11 @@ void main() {
     // Verify that our counter has incremented.
     expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
+  });
+
+  test('description', () {
+    var a = double.infinity;
+    var b = double.infinity;
+    print(a == b);
   });
 }
