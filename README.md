@@ -15,12 +15,8 @@ a `CupertinoSliverRefreshControl` like load more sliver
 
 ## Features
 
-- support autoload and preload(only if cacheExtent > 0)
+- support autoload (when scollview viewport not filled) and preload(when scrollview cacheExtent > 0)
 - similar to `CupertinoSliverRefreshControl` useage
-
-## Getting started
-
-
 
 ## Usage
 
