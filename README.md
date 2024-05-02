@@ -22,11 +22,17 @@ a `CupertinoSliverRefreshControl` like load more sliver
 
 ```dart
 late ValueNotifier<int> _count;
+Future<void> refresh() async {
+  await Future.delayed(const Duration(seconds: 1));
+  _count.value = initialCount;
+  _hasMore.value = true;
+}
 Future<void> loadMore() async {
   await Future.delayed(const Duration(seconds: 1));
   _count.value = _count.value + 8;
 }
 CustomScrollView(slivers: [
+  CupertinoSliverRefreshControl(onRefresh: refresh),
   ValueListenableBuilder(
       valueListenable: _count,
       builder: (c, value, _) {
@@ -43,6 +49,7 @@ CustomScrollView(slivers: [
 CustomScrollView(
   cacheExtent: 500,
   slivers: [
+    ...,
     LoadMoreController(
       onLoad: loadMore,
       autoLoad: true,
