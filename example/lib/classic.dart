@@ -22,7 +22,6 @@ class _ClassicState extends State<Classic> {
   Future<void> refresh() async {
     await Future.delayed(const Duration(seconds: 1));
     _count.value = initialCount;
-    var loadMores = loadMore();
   }
 
   Future<void> loadMore() async {

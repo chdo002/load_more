@@ -14,13 +14,13 @@ and the Flutter guide for
 a `CupertinoSliverRefreshControl` like load more sliver 
 
 ## Features
-
+- support `CustomerScrollView`
 - support autoload and preload(only if cacheExtent > 0)
 - similar to `CupertinoSliverRefreshControl` useage
 
-## Getting started
+## Demo
 
-
+[online demo](https://chdo002.github.io/projects/load-more/)
 
 ## Usage
 
