@@ -1,12 +1,12 @@
 name: cupertino_load_more
-description: "a `CupertinoSliverRefreshControl` like load more sliver "
-version: 0.0.2
+description: "a `CupertinoSliverRefreshControl` like load more sliver"
+version: 0.0.3
 homepage: https://github.com/chdo002/load_more
 repository: https://github.com/chdo002/load_more.git
 
 environment:
-  sdk: '>=3.3.4 <4.0.0'
-  flutter: ">=1.17.0"
+  sdk: '>=2.19.0<4.0.0'
+  flutter: '>=3.7.0'
 
 dependencies:
   flutter:

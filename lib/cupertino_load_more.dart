@@ -1,4 +1,4 @@
-library load_more;
+library cupertino_load_more;
 
 import 'dart:math';
 
@@ -230,6 +230,15 @@ class _LoadMoreSliver extends RenderSliver
   void applyPaintTransform(RenderObject child, Matrix4 transform) {}
 }
 
+typedef LoadMoreControlIndicatorBuilder = Widget Function(
+  BuildContext context,
+  Axis scrollDirection,
+  RefreshIndicatorMode refreshState,
+  double pulledExtent,
+  double refreshTriggerPullDistance,
+  double refreshIndicatorExtent,
+);
+
 /// A sliver widget implementing the iOS-style load more content control.
 /// work like [CupertinoSliverRefreshControl] and support autoLoad & preload
 class LoadMoreController extends StatefulWidget {
@@ -242,7 +251,7 @@ class LoadMoreController extends StatefulWidget {
     required this.onLoad,
     this.refreshTriggerPullDistance = 76,
     this.refreshIndicatorExtent = 56,
-    this.builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
+    this.builder = LoadMoreController.buildRefreshIndicator,
     this.autoLoad = false,
   })  : assert(refreshTriggerPullDistance > 0.0),
         assert(refreshIndicatorExtent >= 0.0),
@@ -254,9 +263,30 @@ class LoadMoreController extends StatefulWidget {
 
   final double refreshTriggerPullDistance;
   final double refreshIndicatorExtent;
-  final RefreshControlIndicatorBuilder? builder;
+  final LoadMoreControlIndicatorBuilder? builder;
   final Future<void> Function()? onLoad;
   final bool autoLoad;
+
+  static Widget buildRefreshIndicator(
+    BuildContext context,
+    Axis scrollDirection,
+    RefreshIndicatorMode refreshState,
+    double pulledExtent,
+    double refreshTriggerPullDistance,
+    double refreshIndicatorExtent,
+  ) {
+    return OverflowBox(
+      maxWidth: scrollDirection == Axis.vertical ? null : double.infinity,
+      maxHeight: scrollDirection == Axis.vertical ? double.infinity : null,
+      alignment: scrollDirection == Axis.vertical
+          ? Alignment.topCenter
+          : Alignment.centerLeft, // Directionality and reverse not support yet
+      child: SizedBox(
+          height: refreshIndicatorExtent,
+          width: refreshIndicatorExtent,
+          child: const CupertinoActivityIndicator(radius: 14)),
+    );
+  }
 
   @override
   State<LoadMoreController> createState() => _LoadMoreControllerState();
@@ -362,6 +392,9 @@ class _LoadMoreControllerState extends State<LoadMoreController> {
 
   @override
   Widget build(BuildContext context) {
+    final scrollView =
+        context.findAncestorWidgetOfExactType<CustomScrollView>();
+    final scrollDirection = scrollView?.scrollDirection ?? Axis.vertical;
     return _LoadMoreSliverWidget(
         refreshIndicatorLayoutExtent: widget.refreshIndicatorExtent,
         hasLayoutExtent: hasSliverLayoutExtent,
@@ -372,6 +405,9 @@ class _LoadMoreControllerState extends State<LoadMoreController> {
         },
         child: LayoutBuilder(builder: (c, constraints) {
           latestIndicatorBoxExtent = constraints.maxHeight;
+          if (scrollDirection == Axis.horizontal) {
+            latestIndicatorBoxExtent = constraints.maxWidth;
+          }
           refreshState = transitionNextState();
 
           if (widget.builder != null && latestIndicatorBoxExtent > 0.0000001) {
@@ -382,6 +418,7 @@ class _LoadMoreControllerState extends State<LoadMoreController> {
             }
             return widget.builder!(
               context,
+              scrollDirection,
               refreshState,
               latestIndicatorBoxExtent,
               widget.refreshTriggerPullDistance,

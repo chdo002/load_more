@@ -51,7 +51,7 @@ class _AutoLoadState extends State<AutoLoad> {
                     delegate: SliverChildListDelegate([
                   ...List.generate(value, (index) => '$index').map((e) => Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(38.0),
+                          padding: const EdgeInsets.all(8.0),
                           child: Text(e),
                         ),
                       ))

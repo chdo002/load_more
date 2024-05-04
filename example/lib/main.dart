@@ -1,9 +1,12 @@
 import 'package:example/auto_load.dart';
+import 'package:example/auto_load_horizontal.dart';
 import 'package:example/classic.dart';
+import 'package:example/classic_horizontal.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:example/tool/general.dart' as general;
+import 'package:flutter/rendering.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,7 +33,9 @@ class MyApp extends StatelessWidget {
             return ListView(
               children: const [
                 [Classic(), 'default classic'],
-                [AutoLoad(), 'autoload and preload']
+                [ClassicHori(), 'default classic horizontal'],
+                [AutoLoad(), 'autoload and preload'],
+                [AutoLoadHori(), 'autoload horizontal'],
               ]
                   .map((e) => ListTile(
                         title: Text(e[1] as String),
