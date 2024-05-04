@@ -2,6 +2,8 @@
 import 'dart:html' as html;
 
 bool isMobile() {
-  RegExp exp = RegExp(r'\b(ios|android)\b', caseSensitive: false);
+  RegExp exp = RegExp(r'\b(iphone|ios|android)\b', caseSensitive: false);
   return exp.hasMatch(html.window.navigator.userAgent);
 }
+
+String userAgent() => html.window.navigator.userAgent;
