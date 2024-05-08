@@ -23,10 +23,18 @@ class MyApp extends StatelessWidget {
           appBar: const CupertinoNavigationBar(middle: Text('home')),
           body: Builder(builder: (context) {
             if (!general.isMobile()) {
-              return const Center(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('open this example using a browser on a mobile device.'),
-                  Text('or switch to mobile mode in development tool.'),
+              return  Center(
+                child:
+
+                Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (general.isEnglish())
+                  const Text('open this example using a browser on a mobile device.'),
+                  if (general.isEnglish())
+                  const Text('or switch to mobile mode in development tool.'),
+                  if (!general.isEnglish())
+                    const Text('该demo请在移动设备浏览器中打开，或者在开发工具中切换到移动端模式'),
+                  if (!general.isEnglish())
+                    const Text('flutter目前不支持PC端的触控信号转为手指拖动信号'),
                 ]),
               );
             }

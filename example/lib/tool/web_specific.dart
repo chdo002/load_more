@@ -6,4 +6,9 @@ bool isMobile() {
   return exp.hasMatch(html.window.navigator.userAgent);
 }
 
+bool isEnglish() {
+  return html.window.navigator.language.toLowerCase().contains('en');
+}
+
+
 String userAgent() => html.window.navigator.userAgent;
