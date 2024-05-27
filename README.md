@@ -17,6 +17,7 @@ a `CupertinoSliverRefreshControl` like load more sliver
 - support `CustomerScrollView`
 - support autoload and preload(only if cacheExtent > 0)
 - similar to `CupertinoSliverRefreshControl` useage
+- support horizontal scroll direction
 
 ## Demo
 
